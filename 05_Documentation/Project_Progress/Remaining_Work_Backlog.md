@@ -54,4 +54,3 @@ Migration has not started. After the Azure source and transformations are reprod
 - Run a pipeline failure/recovery drill and write a root-cause analysis.
 - Define workspace permissions, test row-level security, and document governance/operations.
 - Use a secrets manager for credentials and establish disaster-recovery and cost-management procedures.
-- Kafka/Event Hubs material was supplementary learning; practical exercises were not confirmed and should remain outside the core migration scope unless separately requested.
