@@ -1,0 +1,60 @@
+{
+    "name": "DS_SQL_WatermarkControl",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "LS_SQLServer_AdventureWorks",
+            "type": "LinkedServiceReference"
+        },
+        "annotations": [],
+        "type": "SqlServerTable",
+        "schema": [
+            {
+                "name": "TableName",
+                "type": "varchar"
+            },
+            {
+                "name": "WatermarkColumn",
+                "type": "varchar"
+            },
+            {
+                "name": "LastWatermarkValue",
+                "type": "datetime2",
+                "scale": 3
+            },
+            {
+                "name": "LoadType",
+                "type": "varchar"
+            },
+            {
+                "name": "IsActive",
+                "type": "bit"
+            },
+            {
+                "name": "LastUpdated",
+                "type": "datetime2",
+                "scale": 3
+            },
+            {
+                "name": "SourceSchema",
+                "type": "varchar"
+            },
+            {
+                "name": "SourceTable",
+                "type": "varchar"
+            },
+            {
+                "name": "SinkFolder",
+                "type": "varchar"
+            },
+            {
+                "name": "FullLoadFileName",
+                "type": "varchar"
+            }
+        ],
+        "typeProperties": {
+            "schema": "etl",
+            "table": "WatermarkControl"
+        }
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
+}

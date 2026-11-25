@@ -1,0 +1,21 @@
+{
+    "name": "LS_SQLServer_AdventureWorks",
+    "type": "Microsoft.DataFactory/factories/linkedservices",
+    "properties": {
+        "annotations": [],
+        "type": "SqlServer",
+        "typeProperties": {
+            "server": "localhost",
+            "database": "AdventureWorks2022",
+            "encrypt": "optional",
+            "trustServerCertificate": true,
+            "authenticationType": "SQL",
+            "userName": "sa",
+            "encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiIxMzNlNWM5Yy00OTZjLTQxOTctYTIxMC1mOGJhY2Y0ZWM2NDQiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
+        },
+        "connectVia": {
+            "referenceName": "SHIR-AdventureWorks-Local",
+            "type": "IntegrationRuntimeReference"
+        }
+    }
+}

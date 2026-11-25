@@ -1,0 +1,30 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "value": "lehlogonoloramphisa-df"
+        },
+        "LS_SQLServer_AdventureWorks_password": {
+            "value": ""
+        },
+        "LS_SQLServer_AdventureWorks_properties_typeProperties_server": {
+            "value": "localhost"
+        },
+        "LS_SQLServer_AdventureWorks_properties_typeProperties_database": {
+            "value": "AdventureWorks2022"
+        },
+        "LS_SQLServer_AdventureWorks_properties_typeProperties_userName": {
+            "value": "sa"
+        },
+        "AzureDataLakeStorage1_properties_typeProperties_url": {
+            "value": "https://awdata2022.dfs.core.windows.net"
+        },
+        "containerUri": {
+            "value": ""
+        },
+        "containerSasToken": {
+            "value": ""
+        }
+    }
+}

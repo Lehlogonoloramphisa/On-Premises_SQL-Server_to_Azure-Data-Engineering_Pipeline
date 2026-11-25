@@ -1,0 +1,6 @@
+{
+    "name": "SHIR-AdventureWorks-Local",
+    "properties": {
+        "type": "SelfHosted"
+    }
+}

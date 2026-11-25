@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="980" viewBox="0 0 1800 980" role="img" aria-labelledby="title desc">
+  <title id="title">AdventureWorks Azure-to-Databricks project architecture</title>
+  <desc id="desc">Historical project architecture: AdventureWorks SQL Server and ETL control tables feed Azure Data Factory through a self-hosted integration runtime. ADF copies Parquet to ADLS Gen2 Bronze, which Databricks transforms into Silver Delta tables and Gold dimensions and facts. The Azure resources were later deleted and the Fabric migration has not started.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#20344D" flood-opacity="0.09"/>
+    </filter>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#2C6EAA"/>
+    </marker>
+    <marker id="arrowViolet" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#7056B3"/>
+    </marker>
+    <marker id="arrowSlate" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#73849A"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", Arial, sans-serif; fill: #172B45; }
+      .muted { fill: #60738B; }
+      .small { font-size: 14px; }
+      .tiny { font-size: 12px; }
+      .card { fill: #FFFFFF; stroke: #DCE5EF; stroke-width: 1.5; }
+      .label { font-size: 13px; font-weight: 700; letter-spacing: 1.2px; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="980" fill="#F5F8FC"/>
+  <circle cx="1690" cy="35" r="205" fill="#E9F2FB" opacity="0.7"/>
+  <circle cx="1580" cy="50" r="145" fill="#F1ECFC" opacity="0.75"/>
+
+  <text x="62" y="72" font-size="34" font-weight="700">AdventureWorks | Project Architecture</text>
+  <text x="64" y="108" font-size="17" class="muted">Historical Azure-to-Databricks data platform represented in this project backup</text>
+  <g transform="translate(1278,45)">
+    <rect width="245" height="36" rx="18" fill="#FFF3D9" stroke="#F1D28E"/>
+    <circle cx="19" cy="18" r="5" fill="#C17A10"/>
+    <text x="34" y="23" font-size="12" font-weight="700" fill="#85520A" letter-spacing="0.5">CLOUD SERVICES REPORTED DELETED</text>
+  </g>
+  <g transform="translate(1535,45)">
+    <rect width="215" height="36" rx="18" fill="#EEF1F6" stroke="#D6DEE9"/>
+    <text x="18" y="23" font-size="12" font-weight="700" fill="#56677D" letter-spacing="0.55">FABRIC MIGRATION NOT STARTED</text>
+  </g>
+
+  <!-- Environment zones -->
+  <rect x="50" y="155" width="570" height="575" rx="24" fill="#EFF4F9" stroke="#D8E2EC" stroke-width="1.5"/>
+  <rect x="645" y="155" width="1105" height="575" rx="24" fill="#F1F0FA" stroke="#DED9EF" stroke-width="1.5"/>
+  <g transform="translate(78,177)">
+    <rect width="190" height="29" rx="14.5" fill="#DDE8F3"/>
+    <text x="15" y="20" class="label" fill="#385A7B">LOCAL ENVIRONMENT</text>
+  </g>
+  <text x="78" y="230" font-size="14" class="muted">Windows host • SQL Server 2022 Developer</text>
+  <g transform="translate(674,177)">
+    <rect width="215" height="29" rx="14.5" fill="#E2DDF3"/>
+    <text x="15" y="20" class="label" fill="#5A4A91">AZURE SERVICES • HISTORICAL</text>
+  </g>
+
+  <!-- SQL source -->
+  <g filter="url(#shadow)">
+    <rect x="80" y="263" width="298" height="205" rx="17" class="card"/>
+    <path d="M80 280 Q80 263 97 263 H361 Q378 263 378 280 V306 H80 Z" fill="#256A9E"/>
+  </g>
+  <g transform="translate(100,275)">
+    <circle cx="14" cy="10" r="10" fill="#FFFFFF" opacity="0.2"/>
+    <path d="M7 7h14M7 11h14M7 15h14" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round"/>
+  </g>
+  <text x="132" y="291" font-size="15" font-weight="700" fill="#FFFFFF">SQL SERVER 2022</text>
+  <text x="101" y="339" font-size="20" font-weight="700">AdventureWorks2022</text>
+  <text x="101" y="367" class="small muted">Source tables</text>
+  <text x="101" y="390" class="small">Sales.Customer • Sales.SalesOrderHeader</text>
+  <text x="101" y="412" class="small">Sales.SalesOrderDetail • Production.Product</text>
+  <rect x="100" y="429" width="253" height="22" rx="11" fill="#EAF3FA"/>
+  <text x="113" y="445" class="tiny" font-weight="600" fill="#3C6C91">Reads and copies use SQL linked service</text>
+
+  <!-- SQL control and audit -->
+  <g filter="url(#shadow)">
+    <rect x="80" y="493" width="298" height="151" rx="17" class="card"/>
+  </g>
+  <rect x="80" y="493" width="6" height="151" rx="3" fill="#D58A24"/>
+  <text x="102" y="523" font-size="16" font-weight="700">ETL control &amp; audit</text>
+  <text x="102" y="550" class="small">etl.WatermarkControl</text>
+  <text x="102" y="572" class="small">etl.LoadAudit</text>
+  <text x="102" y="604" class="tiny muted">Full → incremental • run outcomes</text>
+  <text x="102" y="623" class="tiny muted">Watermark updates after successful copies</text>
+
+  <!-- Self-hosted integration runtime -->
+  <g filter="url(#shadow)">
+    <rect x="421" y="292" width="165" height="205" rx="17" class="card"/>
+  </g>
+  <rect x="421" y="292" width="165" height="8" rx="4" fill="#3A8C83"/>
+  <g transform="translate(470,318)">
+    <rect x="0" y="0" width="68" height="49" rx="9" fill="#E0F2EF"/>
+    <rect x="13" y="11" width="42" height="27" rx="4" fill="#3A8C83"/>
+    <path d="M20 19h28M20 25h28M20 31h17" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    <path d="M23 43h22" stroke="#3A8C83" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="503" y="395" text-anchor="middle" font-size="14" font-weight="700">SELF-HOSTED</text>
+  <text x="503" y="416" text-anchor="middle" font-size="14" font-weight="700">INTEGRATION RUNTIME</text>
+  <text x="503" y="445" text-anchor="middle" class="tiny muted">SHIR-AdventureWorks-Local</text>
+  <text x="503" y="474" text-anchor="middle" class="tiny muted">Runs on local Windows host</text>
+
+  <!-- Azure Data Factory -->
+  <g filter="url(#shadow)">
+    <rect x="690" y="232" width="285" height="207" rx="17" class="card"/>
+  </g>
+  <rect x="690" y="232" width="285" height="8" rx="4" fill="#8A68C2"/>
+  <g transform="translate(713,255)">
+    <rect width="42" height="42" rx="12" fill="#F0EAF9"/>
+    <circle cx="13" cy="21" r="4" fill="#7857B7"/>
+    <circle cx="29" cy="12" r="4" fill="#7857B7"/>
+    <circle cx="29" cy="30" r="4" fill="#7857B7"/>
+    <path d="M16.5 19l9-5M16.5 23l9 5" stroke="#7857B7" stroke-width="2"/>
+  </g>
+  <text x="768" y="273" font-size="16" font-weight="700">AZURE DATA FACTORY</text>
+  <text x="713" y="321" font-size="14" font-weight="600">Metadata-driven pipeline</text>
+  <text x="713" y="345" class="small muted">Full / incremental • 4 source tables</text>
+  <text x="713" y="368" class="small muted">Separate Product full-load pipeline</text>
+  <text x="713" y="396" class="tiny muted">lehlogonoloramphisa-df • SQL control &amp; audit</text>
+  <rect x="713" y="409" width="231" height="20" rx="10" fill="#F3EEF9"/>
+  <text x="725" y="423" class="tiny" font-weight="600" fill="#684B9D">No schedule or event trigger configured</text>
+
+  <!-- ADLS Bronze -->
+  <g filter="url(#shadow)">
+    <rect x="690" y="492" width="285" height="177" rx="17" class="card"/>
+  </g>
+  <rect x="690" y="492" width="285" height="8" rx="4" fill="#D49A2C"/>
+  <g transform="translate(713,516)">
+    <rect width="42" height="42" rx="12" fill="#FBF2DF"/>
+    <path d="M11 14h20v4H11zM11 21h20v4H11zM11 28h20v4H11z" fill="#C58A20"/>
+    <circle cx="15" cy="16" r="1" fill="#FFF"/><circle cx="15" cy="23" r="1" fill="#FFF"/><circle cx="15" cy="30" r="1" fill="#FFF"/>
+  </g>
+  <text x="768" y="535" font-size="16" font-weight="700">ADLS GEN2 • BRONZE</text>
+  <text x="713" y="581" font-size="15" font-weight="700">awdata2022 / bronze</text>
+  <text x="713" y="607" class="small muted">Parquet baseline and incremental files</text>
+  <text x="713" y="632" class="tiny muted">ADF system-assigned identity • historical access</text>
+  <text x="713" y="653" class="tiny" fill="#906418">Hierarchical namespace enabled</text>
+
+  <!-- Databricks medallion workspace -->
+  <g filter="url(#shadow)">
+    <rect x="1050" y="220" width="658" height="449" rx="20" class="card"/>
+  </g>
+  <path d="M1050 240 Q1050 220 1070 220 H1688 Q1708 220 1708 240 V290 H1050 Z" fill="#4D3B78"/>
+  <g transform="translate(1075,239)">
+    <path d="M4 7h23M4 15h23M4 23h23" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="9" cy="7" r="3" fill="#FFD57C"/><circle cx="21" cy="15" r="3" fill="#FF9B72"/><circle cx="13" cy="23" r="3" fill="#7FD1C1"/>
+  </g>
+  <text x="1114" y="251" font-size="17" font-weight="700" fill="#FFFFFF">AZURE DATABRICKS</text>
+  <text x="1114" y="273" class="small" fill="#E5DDF6">adb-adventureworks-dev • Unity Catalog: adb_adventureworks_dev</text>
+
+  <!-- Bronze stage -->
+  <rect x="1080" y="312" width="598" height="85" rx="13" fill="#FFF9EA" stroke="#EBD6A8" stroke-width="1.3"/>
+  <rect x="1080" y="312" width="8" height="85" rx="4" fill="#D49A2C"/>
+  <text x="1105" y="341" font-size="13" font-weight="800" fill="#9A6812" letter-spacing="1">BRONZE</text>
+  <text x="1105" y="366" font-size="15" font-weight="700">Validation &amp; inventory</text>
+  <text x="1420" y="352" class="small muted">Checks storage access and inventories</text>
+  <text x="1420" y="374" class="small muted">the four source folders</text>
+
+  <path d="M1379 398v14" stroke="#73849A" stroke-width="2.4" marker-end="url(#arrowSlate)"/>
+
+  <!-- Silver stage -->
+  <rect x="1080" y="416" width="598" height="104" rx="13" fill="#EEF7FC" stroke="#BED9E9" stroke-width="1.3"/>
+  <rect x="1080" y="416" width="8" height="104" rx="4" fill="#3C91BB"/>
+  <text x="1105" y="446" font-size="13" font-weight="800" fill="#276F92" letter-spacing="1">SILVER</text>
+  <text x="1105" y="471" font-size="15" font-weight="700">Clean • deduplicate • merge</text>
+  <text x="1105" y="496" class="tiny muted">Customer • Product • SalesOrderHeader • SalesOrderDetail</text>
+  <text x="1505" y="458" class="tiny" font-weight="700" fill="#276F92">Delta tables</text>
+  <text x="1505" y="481" class="tiny muted">adb_adventureworks_dev</text>
+  <text x="1505" y="500" class="tiny muted">.silver</text>
+
+  <path d="M1379 521v14" stroke="#73849A" stroke-width="2.4" marker-end="url(#arrowSlate)"/>
+
+  <!-- Gold stage -->
+  <rect x="1080" y="538" width="598" height="104" rx="13" fill="#F5F0FB" stroke="#D7C9EA" stroke-width="1.3"/>
+  <rect x="1080" y="538" width="8" height="104" rx="4" fill="#8966BC"/>
+  <text x="1105" y="568" font-size="13" font-weight="800" fill="#684B93" letter-spacing="1">GOLD</text>
+  <text x="1105" y="593" font-size="15" font-weight="700">Dimensional analytics</text>
+  <text x="1105" y="618" class="tiny muted">Dimensions: Date, Customer, Product</text>
+  <text x="1420" y="588" class="tiny muted">Facts: Sales Order • Sales Line</text>
+  <text x="1420" y="612" class="tiny muted">adb_adventureworks_dev.gold</text>
+
+  <!-- Connectors: source and copy runtime -->
+  <path d="M378 365 H421" fill="none" stroke="#2C6EAA" stroke-width="3" marker-end="url(#arrowBlue)"/>
+  <rect x="375" y="338" width="58" height="20" rx="10" fill="#F5F8FC"/>
+  <text x="404" y="352" text-anchor="middle" class="tiny" font-weight="700" fill="#2C6EAA">read</text>
+
+  <!-- ADF orchestrates the runtime -->
+  <path d="M690 318 H625 V329 H586" fill="none" stroke="#7056B3" stroke-width="2.6" stroke-dasharray="7 6" marker-end="url(#arrowViolet)"/>
+  <rect x="601" y="292" width="92" height="20" rx="10" fill="#F1F0FA"/>
+  <text x="647" y="306" text-anchor="middle" class="tiny" font-weight="700" fill="#7056B3">orchestrates</text>
+
+  <!-- Copy data through SHIR to the lake -->
+  <path d="M586 412 H628 V577 H690" fill="none" stroke="#2C6EAA" stroke-width="3.2" marker-end="url(#arrowBlue)"/>
+  <rect x="593" y="489" width="77" height="22" rx="11" fill="#F5F8FC"/>
+  <text x="631" y="504" text-anchor="middle" class="tiny" font-weight="700" fill="#2C6EAA">Parquet copy</text>
+
+  <!-- Read Bronze into the medallion notebooks -->
+  <path d="M975 577 H1016 V354 H1080" fill="none" stroke="#2C6EAA" stroke-width="3.2" marker-end="url(#arrowBlue)"/>
+  <rect x="982" y="467" width="78" height="22" rx="11" fill="#F5F8FC"/>
+  <text x="1021" y="482" text-anchor="middle" class="tiny" font-weight="700" fill="#2C6EAA">Bronze files</text>
+
+  <!-- Footer notes -->
+  <rect x="50" y="765" width="1700" height="151" rx="20" fill="#FFFFFF" stroke="#DCE5EF" stroke-width="1.5"/>
+  <text x="80" y="803" class="label" fill="#435B75">HOW TO READ THIS DIAGRAM</text>
+  <line x1="80" y1="820" x2="1720" y2="820" stroke="#E6ECF2"/>
+  <path d="M90 850h48" stroke="#2C6EAA" stroke-width="3" marker-end="url(#arrowBlue)"/>
+  <text x="153" y="855" class="small">Data movement</text>
+  <path d="M305 850h48" stroke="#7056B3" stroke-width="2.6" stroke-dasharray="7 6" marker-end="url(#arrowViolet)"/>
+  <text x="368" y="855" class="small">ADF orchestration</text>
+  <text x="610" y="855" class="small muted">The local repository keeps exports, notebooks, SQL scripts, data snapshots, and historical test results.</text>
+  <text x="80" y="888" class="small" font-weight="600" fill="#82570F">Status:</text>
+  <text x="133" y="888" class="small muted">The main ADF, ADLS, and Databricks resources were reported deleted; this image documents the prior tested design.</text>
+
+  <text x="62" y="952" class="tiny muted">AdventureWorks2022 • ADF + SHIR • ADLS Gen2 • Databricks medallion layers</text>
+  <text x="1738" y="952" text-anchor="end" class="tiny muted">Project architecture overview</text>
+</svg>

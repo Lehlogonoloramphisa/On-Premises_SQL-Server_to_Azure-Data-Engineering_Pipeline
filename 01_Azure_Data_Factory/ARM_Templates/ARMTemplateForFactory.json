@@ -1,0 +1,1238 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "lehlogonoloramphisa-df"
+        },
+        "LS_SQLServer_AdventureWorks_password": {
+            "type": "secureString",
+            "metadata": "Secure string for 'password' of 'LS_SQLServer_AdventureWorks'"
+        },
+        "LS_SQLServer_AdventureWorks_properties_typeProperties_server": {
+            "type": "string",
+            "defaultValue": "localhost"
+        },
+        "LS_SQLServer_AdventureWorks_properties_typeProperties_database": {
+            "type": "string",
+            "defaultValue": "AdventureWorks2022"
+        },
+        "LS_SQLServer_AdventureWorks_properties_typeProperties_userName": {
+            "type": "string",
+            "defaultValue": "sa"
+        },
+        "AzureDataLakeStorage1_properties_typeProperties_url": {
+            "type": "string",
+            "defaultValue": "https://awdata2022.dfs.core.windows.net"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_Copy_Customer_To_Bronze')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Lookup_Active_Tables",
+                        "type": "Lookup",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "SqlServerSource",
+                                "sqlReaderQuery": "SELECT\n    TableName,\n    SourceSchema,\n    SourceTable,\n    SinkFolder,\n    WatermarkColumn,\n    LastWatermarkValue,\n    FullLoadFileName,\n    LoadType\nFROM etl.WatermarkControl\nWHERE IsActive = 1;",
+                                "queryTimeout": "02:00:00",
+                                "partitionOption": "None"
+                            },
+                            "dataset": {
+                                "referenceName": "DS_SQL_WatermarkControl",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            },
+                            "firstRowOnly": false
+                        }
+                    },
+                    {
+                        "name": "ForEach_Active_Tables",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "Lookup_Active_Tables",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('Lookup_Active_Tables').output.value",
+                                "type": "Expression"
+                            },
+                            "isSequential": true,
+                            "activities": [
+                                {
+                                    "name": "Copy_Table_To_Bronze",
+                                    "type": "Copy",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "0.12:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "SqlServerSource",
+                                            "sqlReaderQuery": {
+                                                "value": "@if(\n    equals(item().LoadType, 'Full'),\n    concat('SELECT * FROM [', item().SourceSchema, '].[', item().SourceTable, ']'),\n    concat(\n        'SELECT * FROM [',\n        item().SourceSchema,\n        '].[',\n        item().SourceTable,\n        '] WHERE [',\n        item().WatermarkColumn,\n        '] >= CONVERT(datetime2(3), ''',\n        formatDateTime(item().LastWatermarkValue, 'yyyy-MM-ddTHH:mm:ss.fff'),\n        ''', 126)'\n    )\n)",
+                                                "type": "Expression"
+                                            },
+                                            "queryTimeout": "02:00:00",
+                                            "partitionOption": "None"
+                                        },
+                                        "sink": {
+                                            "type": "ParquetSink",
+                                            "storeSettings": {
+                                                "type": "AzureBlobFSWriteSettings"
+                                            },
+                                            "formatSettings": {
+                                                "type": "ParquetWriteSettings"
+                                            }
+                                        },
+                                        "enableStaging": false,
+                                        "translator": {
+                                            "type": "TabularTranslator",
+                                            "typeConversion": true,
+                                            "typeConversionSettings": {
+                                                "allowDataTruncation": true,
+                                                "treatBooleanAsNumber": false
+                                            }
+                                        }
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_SQL_AdventureWorks_Source",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "SchemaName": {
+                                                    "value": "@item().SourceSchema",
+                                                    "type": "Expression"
+                                                },
+                                                "TableName": {
+                                                    "value": "@item().SourceTable",
+                                                    "type": "Expression"
+                                                },
+                                                "WatermarkValue": {
+                                                    "value": "@string(item().LastWatermarkValue)",
+                                                    "type": "Expression"
+                                                }
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_ADLS_AdventureWorks_Bronze",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "DirectoryPath": {
+                                                    "value": "@if(equals(item().LoadType, 'Full'), item().SinkFolder, concat(item().SinkFolder, '/incremental'))",
+                                                    "type": "Expression"
+                                                },
+                                                "FileName": {
+                                                    "value": "@if(equals(item().LoadType, 'Full'), item().FullLoadFileName, concat(item().SourceTable, '_', pipeline().RunId, '.parquet'))",
+                                                    "type": "Expression"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "Update_Watermark",
+                                    "type": "SqlServerStoredProcedure",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Copy_Table_To_Bronze",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "0.12:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "storedProcedureName": "[[etl].[usp_UpdateWatermark]",
+                                        "storedProcedureParameters": {
+                                            "TableName": {
+                                                "value": {
+                                                    "value": "@item().TableName",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            }
+                                        }
+                                    },
+                                    "linkedServiceName": {
+                                        "referenceName": "LS_SQLServer_AdventureWorks",
+                                        "type": "LinkedServiceReference"
+                                    }
+                                },
+                                {
+                                    "name": "Audit_Load_Success",
+                                    "type": "SqlServerStoredProcedure",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Update_Watermark",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "0.12:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "storedProcedureName": "[[etl].[usp_InsertLoadAudit]",
+                                        "storedProcedureParameters": {
+                                            "EndTime": {
+                                                "value": {
+                                                    "value": "@utcNow()",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "DateTime"
+                                            },
+                                            "ErrorMessage": {
+                                                "value": "",
+                                                "type": "String"
+                                            },
+                                            "ExtractedRecords": {
+                                                "value": {
+                                                    "value": "@activity('Copy_Table_To_Bronze').output.rowsCopied",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "Int64"
+                                            },
+                                            "LoadStatus": {
+                                                "value": {
+                                                    "value": "Succeeded",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            },
+                                            "LoadType": {
+                                                "value": {
+                                                    "value": "@item().LoadType",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            },
+                                            "PipelineRunID": {
+                                                "value": {
+                                                    "value": "@pipeline().RunId",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "Guid"
+                                            },
+                                            "StartTime": {
+                                                "value": {
+                                                    "value": "@activity('Copy_Table_To_Bronze').output.executionDetails[0].start",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "DateTime"
+                                            },
+                                            "TableName": {
+                                                "value": {
+                                                    "value": "@item().TableName",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            }
+                                        }
+                                    },
+                                    "linkedServiceName": {
+                                        "referenceName": "LS_SQLServer_AdventureWorks",
+                                        "type": "LinkedServiceReference"
+                                    }
+                                },
+                                {
+                                    "name": "Audit_Load_Failure",
+                                    "type": "SqlServerStoredProcedure",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Copy_Table_To_Bronze",
+                                            "dependencyConditions": [
+                                                "Failed"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "0.12:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "storedProcedureName": "[[etl].[usp_InsertLoadAudit]",
+                                        "storedProcedureParameters": {
+                                            "EndTime": {
+                                                "value": {
+                                                    "value": "@utcNow()",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "DateTime"
+                                            },
+                                            "ErrorMessage": {
+                                                "value": {
+                                                    "value": "@string(activity('Copy_Table_To_Bronze').error.message)",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            },
+                                            "ExtractedRecords": {
+                                                "value": {
+                                                    "value": "0",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "Int64"
+                                            },
+                                            "LoadStatus": {
+                                                "value": "Failed",
+                                                "type": "String"
+                                            },
+                                            "LoadType": {
+                                                "value": {
+                                                    "value": "@item().LoadType",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            },
+                                            "PipelineRunID": {
+                                                "value": {
+                                                    "value": "@pipeline().RunId",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "Guid"
+                                            },
+                                            "StartTime": {
+                                                "value": {
+                                                    "value": "@pipeline().TriggerTime",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "DateTime"
+                                            },
+                                            "TableName": {
+                                                "value": {
+                                                    "value": "@item().TableName",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            }
+                                        }
+                                    },
+                                    "linkedServiceName": {
+                                        "referenceName": "LS_SQLServer_AdventureWorks",
+                                        "type": "LinkedServiceReference"
+                                    }
+                                },
+                                {
+                                    "name": "Fail_Pipeline_On_Copy_Error",
+                                    "type": "Fail",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Audit_Load_Failure",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "errorCode": "BRONZE_COPY_FAILED",
+                                        "message": "@concat('Copy failed for ', item().SourceSchema, '.', item().SourceTable, ': ', string(activity('Copy_Table_To_Bronze').error.message))"
+                                    }
+                                },
+                                {
+                                    "name": "Audit_Watermark_Failure",
+                                    "type": "SqlServerStoredProcedure",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Update_Watermark",
+                                            "dependencyConditions": [
+                                                "Failed"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "0.12:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "storedProcedureName": "[[etl].[usp_InsertLoadAudit]",
+                                        "storedProcedureParameters": {
+                                            "EndTime": {
+                                                "value": {
+                                                    "value": "@utcNow()",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "DateTime"
+                                            },
+                                            "ErrorMessage": {
+                                                "value": {
+                                                    "value": "@string(activity('Update_Watermark').error.message)",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            },
+                                            "ExtractedRecords": {
+                                                "value": {
+                                                    "value": "@activity('Copy_Table_To_Bronze').output.rowsCopied",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "Int64"
+                                            },
+                                            "LoadStatus": {
+                                                "value": "Failed",
+                                                "type": "String"
+                                            },
+                                            "LoadType": {
+                                                "value": {
+                                                    "value": "@item().LoadType",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            },
+                                            "PipelineRunID": {
+                                                "value": {
+                                                    "value": "@pipeline().RunId",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "Guid"
+                                            },
+                                            "StartTime": {
+                                                "value": {
+                                                    "value": "@activity('Copy_Table_To_Bronze').output.executionDetails[0].start",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "DateTime"
+                                            },
+                                            "TableName": {
+                                                "value": {
+                                                    "value": "@item().TableName",
+                                                    "type": "Expression"
+                                                },
+                                                "type": "String"
+                                            }
+                                        }
+                                    },
+                                    "linkedServiceName": {
+                                        "referenceName": "LS_SQLServer_AdventureWorks",
+                                        "type": "LinkedServiceReference"
+                                    }
+                                },
+                                {
+                                    "name": "Fail_Pipeline_On_Watermark_Error",
+                                    "type": "Fail",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "Audit_Watermark_Failure",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "errorCode": "WATERMARK_UPDATE_FAILED",
+                                        "message": "@concat('Watermark update failed for ', item().TableName, ': ', string(activity('Update_Watermark').error.message))"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2026-11-20T20:25:41Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/DS_SQL_WatermarkControl')]",
+                "[concat(variables('factoryId'), '/datasets/DS_SQL_AdventureWorks_Source')]",
+                "[concat(variables('factoryId'), '/datasets/DS_ADLS_AdventureWorks_Bronze')]",
+                "[concat(variables('factoryId'), '/linkedServices/LS_SQLServer_AdventureWorks')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_FullLoad_Product_To_Bronze')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Copy_Product_To_Bronze",
+                        "type": "Copy",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "SqlServerSource",
+                                "queryTimeout": "02:00:00",
+                                "partitionOption": "None"
+                            },
+                            "sink": {
+                                "type": "ParquetSink",
+                                "storeSettings": {
+                                    "type": "AzureBlobFSWriteSettings"
+                                },
+                                "formatSettings": {
+                                    "type": "ParquetWriteSettings"
+                                }
+                            },
+                            "enableStaging": false,
+                            "translator": {
+                                "type": "TabularTranslator",
+                                "mappings": [
+                                    {
+                                        "source": {
+                                            "name": "ProductID",
+                                            "type": "Int32",
+                                            "physicalType": "int"
+                                        },
+                                        "sink": {
+                                            "name": "ProductID",
+                                            "type": "Int32",
+                                            "physicalType": "INT_32"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "Name",
+                                            "type": "String",
+                                            "physicalType": "nvarchar"
+                                        },
+                                        "sink": {
+                                            "name": "Name",
+                                            "type": "String",
+                                            "physicalType": "UTF8"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "ProductNumber",
+                                            "type": "String",
+                                            "physicalType": "nvarchar"
+                                        },
+                                        "sink": {
+                                            "name": "ProductNumber",
+                                            "type": "String",
+                                            "physicalType": "UTF8"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "MakeFlag",
+                                            "type": "Boolean",
+                                            "physicalType": "bit"
+                                        },
+                                        "sink": {
+                                            "name": "MakeFlag",
+                                            "type": "Boolean",
+                                            "physicalType": "BOOLEAN"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "FinishedGoodsFlag",
+                                            "type": "Boolean",
+                                            "physicalType": "bit"
+                                        },
+                                        "sink": {
+                                            "name": "FinishedGoodsFlag",
+                                            "type": "Boolean",
+                                            "physicalType": "BOOLEAN"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "Color",
+                                            "type": "String",
+                                            "physicalType": "nvarchar"
+                                        },
+                                        "sink": {
+                                            "name": "Color",
+                                            "type": "String",
+                                            "physicalType": "UTF8"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "SafetyStockLevel",
+                                            "type": "Int16",
+                                            "physicalType": "smallint"
+                                        },
+                                        "sink": {
+                                            "name": "SafetyStockLevel",
+                                            "type": "Int16",
+                                            "physicalType": "INT_32"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "ReorderPoint",
+                                            "type": "Int16",
+                                            "physicalType": "smallint"
+                                        },
+                                        "sink": {
+                                            "name": "ReorderPoint",
+                                            "type": "Int16",
+                                            "physicalType": "INT_32"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "StandardCost",
+                                            "type": "Decimal",
+                                            "physicalType": "money",
+                                            "scale": 4,
+                                            "precision": 19
+                                        },
+                                        "sink": {
+                                            "name": "StandardCost",
+                                            "type": "Decimal",
+                                            "physicalType": "DECIMAL"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "ListPrice",
+                                            "type": "Decimal",
+                                            "physicalType": "money",
+                                            "scale": 4,
+                                            "precision": 19
+                                        },
+                                        "sink": {
+                                            "name": "ListPrice",
+                                            "type": "Decimal",
+                                            "physicalType": "DECIMAL"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "Size",
+                                            "type": "String",
+                                            "physicalType": "nvarchar"
+                                        },
+                                        "sink": {
+                                            "name": "Size",
+                                            "type": "String",
+                                            "physicalType": "UTF8"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "SizeUnitMeasureCode",
+                                            "type": "String",
+                                            "physicalType": "nchar"
+                                        },
+                                        "sink": {
+                                            "name": "SizeUnitMeasureCode",
+                                            "type": "String",
+                                            "physicalType": "UTF8"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "WeightUnitMeasureCode",
+                                            "type": "String",
+                                            "physicalType": "nchar"
+                                        },
+                                        "sink": {
+                                            "name": "WeightUnitMeasureCode",
+                                            "type": "String",
+                                            "physicalType": "UTF8"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "Weight",
+                                            "type": "Decimal",
+                                            "physicalType": "decimal",
+                                            "scale": 2,
+                                            "precision": 8
+                                        },
+                                        "sink": {
+                                            "name": "Weight",
+                                            "type": "Decimal",
+                                            "physicalType": "DECIMAL"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "DaysToManufacture",
+                                            "type": "Int32",
+                                            "physicalType": "int"
+                                        },
+                                        "sink": {
+                                            "name": "DaysToManufacture",
+                                            "type": "Int32",
+                                            "physicalType": "INT_32"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "ProductLine",
+                                            "type": "String",
+                                            "physicalType": "nchar"
+                                        },
+                                        "sink": {
+                                            "name": "ProductLine",
+                                            "type": "String",
+                                            "physicalType": "UTF8"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "Class",
+                                            "type": "String",
+                                            "physicalType": "nchar"
+                                        },
+                                        "sink": {
+                                            "name": "Class",
+                                            "type": "String",
+                                            "physicalType": "UTF8"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "Style",
+                                            "type": "String",
+                                            "physicalType": "nchar"
+                                        },
+                                        "sink": {
+                                            "name": "Style",
+                                            "type": "String",
+                                            "physicalType": "UTF8"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "ProductSubcategoryID",
+                                            "type": "Int32",
+                                            "physicalType": "int"
+                                        },
+                                        "sink": {
+                                            "name": "ProductSubcategoryID",
+                                            "type": "Int32",
+                                            "physicalType": "INT_32"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "ProductModelID",
+                                            "type": "Int32",
+                                            "physicalType": "int"
+                                        },
+                                        "sink": {
+                                            "name": "ProductModelID",
+                                            "type": "Int32",
+                                            "physicalType": "INT_32"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "SellStartDate",
+                                            "type": "DateTime",
+                                            "physicalType": "datetime"
+                                        },
+                                        "sink": {
+                                            "name": "SellStartDate",
+                                            "type": "DateTime",
+                                            "physicalType": "INT_96"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "SellEndDate",
+                                            "type": "DateTime",
+                                            "physicalType": "datetime"
+                                        },
+                                        "sink": {
+                                            "name": "SellEndDate",
+                                            "type": "DateTime",
+                                            "physicalType": "INT_96"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "DiscontinuedDate",
+                                            "type": "DateTime",
+                                            "physicalType": "datetime"
+                                        },
+                                        "sink": {
+                                            "name": "DiscontinuedDate",
+                                            "type": "DateTime",
+                                            "physicalType": "INT_96"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "rowguid",
+                                            "type": "Guid",
+                                            "physicalType": "uniqueidentifier"
+                                        },
+                                        "sink": {
+                                            "name": "rowguid",
+                                            "type": "Guid",
+                                            "physicalType": "UTF8"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "ModifiedDate",
+                                            "type": "DateTime",
+                                            "physicalType": "datetime"
+                                        },
+                                        "sink": {
+                                            "name": "ModifiedDate",
+                                            "type": "DateTime",
+                                            "physicalType": "INT_96"
+                                        }
+                                    }
+                                ],
+                                "typeConversion": true,
+                                "typeConversionSettings": {
+                                    "allowDataTruncation": true,
+                                    "treatBooleanAsNumber": false
+                                }
+                            }
+                        },
+                        "inputs": [
+                            {
+                                "referenceName": "DS_SQLServer_Production_Product",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "referenceName": "DS_ADLS_Bronze_Product",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ]
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2026-11-20T22:22:49Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/DS_SQLServer_Production_Product')]",
+                "[concat(variables('factoryId'), '/datasets/DS_ADLS_Bronze_Product')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_SQLServer_AdventureWorks')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "SqlServer",
+                "typeProperties": {
+                    "server": "[parameters('LS_SQLServer_AdventureWorks_properties_typeProperties_server')]",
+                    "database": "[parameters('LS_SQLServer_AdventureWorks_properties_typeProperties_database')]",
+                    "encrypt": "optional",
+                    "trustServerCertificate": true,
+                    "authenticationType": "SQL",
+                    "userName": "[parameters('LS_SQLServer_AdventureWorks_properties_typeProperties_userName')]",
+                    "password": {
+                        "type": "SecureString",
+                        "value": "[parameters('LS_SQLServer_AdventureWorks_password')]"
+                    }
+                },
+                "connectVia": {
+                    "referenceName": "SHIR-AdventureWorks-Local",
+                    "type": "IntegrationRuntimeReference"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/integrationRuntimes/SHIR-AdventureWorks-Local')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureDataLakeStorage1')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobFS",
+                "typeProperties": {
+                    "url": "[parameters('AzureDataLakeStorage1_properties_typeProperties_url')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_SQL_WatermarkControl')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_SQLServer_AdventureWorks",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "SqlServerTable",
+                "schema": [
+                    {
+                        "name": "TableName",
+                        "type": "varchar"
+                    },
+                    {
+                        "name": "WatermarkColumn",
+                        "type": "varchar"
+                    },
+                    {
+                        "name": "LastWatermarkValue",
+                        "type": "datetime2",
+                        "scale": 3
+                    },
+                    {
+                        "name": "LoadType",
+                        "type": "varchar"
+                    },
+                    {
+                        "name": "IsActive",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "LastUpdated",
+                        "type": "datetime2",
+                        "scale": 3
+                    },
+                    {
+                        "name": "SourceSchema",
+                        "type": "varchar"
+                    },
+                    {
+                        "name": "SourceTable",
+                        "type": "varchar"
+                    },
+                    {
+                        "name": "SinkFolder",
+                        "type": "varchar"
+                    },
+                    {
+                        "name": "FullLoadFileName",
+                        "type": "varchar"
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "etl",
+                    "table": "WatermarkControl"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_SQLServer_AdventureWorks')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/SHIR-AdventureWorks-Local')]",
+            "type": "Microsoft.DataFactory/factories/integrationRuntimes",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "SelfHosted",
+                "typeProperties": {}
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_SQL_AdventureWorks_Source')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_SQLServer_AdventureWorks",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "SchemaName": {
+                        "type": "String"
+                    },
+                    "TableName": {
+                        "type": "String"
+                    },
+                    "WatermarkValue": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "SqlServerTable",
+                "schema": [],
+                "typeProperties": {
+                    "schema": {
+                        "value": "@dataset().SchemaName\n",
+                        "type": "Expression"
+                    },
+                    "table": {
+                        "value": "@dataset().TableName",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_SQLServer_AdventureWorks')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_ADLS_AdventureWorks_Bronze')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage1",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "DirectoryPath": {
+                        "type": "String"
+                    },
+                    "FileName": {
+                        "type": "String"
+                    }
+                },
+                "annotations": [],
+                "type": "Parquet",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileName": {
+                            "value": "@dataset().FileName",
+                            "type": "Expression"
+                        },
+                        "folderPath": {
+                            "value": "@dataset().DirectoryPath",
+                            "type": "Expression"
+                        },
+                        "fileSystem": "bronze"
+                    },
+                    "compressionCodec": "snappy"
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage1')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_ADLS_Bronze_Product')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage1",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "Parquet",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileName": "Product.parquet",
+                        "folderPath": "production/product",
+                        "fileSystem": "bronze"
+                    },
+                    "compressionCodec": "snappy"
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage1')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_SQLServer_Production_Product')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_SQLServer_AdventureWorks",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "SqlServerTable",
+                "schema": [
+                    {
+                        "name": "ProductID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "Name",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "ProductNumber",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "MakeFlag",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "FinishedGoodsFlag",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "Color",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SafetyStockLevel",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "ReorderPoint",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "StandardCost",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "ListPrice",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "Size",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SizeUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "WeightUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Weight",
+                        "type": "decimal",
+                        "precision": 8,
+                        "scale": 2
+                    },
+                    {
+                        "name": "DaysToManufacture",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductLine",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Class",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Style",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "ProductSubcategoryID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductModelID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "SellStartDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    },
+                    {
+                        "name": "SellEndDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    },
+                    {
+                        "name": "DiscontinuedDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    },
+                    {
+                        "name": "rowguid",
+                        "type": "uniqueidentifier"
+                    },
+                    {
+                        "name": "ModifiedDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "Production",
+                    "table": "Product"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_SQLServer_AdventureWorks')]"
+            ]
+        }
+    ]
+}

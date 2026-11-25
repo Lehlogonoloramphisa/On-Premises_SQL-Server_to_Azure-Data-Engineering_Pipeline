@@ -1,0 +1,6 @@
+selected resource name:		DS_SQL_WatermarkControl
+selected resource type:		dataset
+factory name:			lehlogonoloramphisa-df
+factory location:		southafricanorth
+subscription id:		0959f586-d6b1-4b8b-8a32-accb0fa933ce
+time of download (UTC):		Mon, 23 Nov 2026 22:12:58 GMT
