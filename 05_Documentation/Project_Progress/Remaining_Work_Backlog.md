@@ -6,7 +6,7 @@ This backlog tracks the work that remains incomplete. Historical test results ar
 
 - Confirm whether `rg-adventureworks-data-dev` contains remaining resources before cleanup.
 - Do not delete resources in the separate `Fabric_Azure_Workspace` group without confirming their purpose.
-- The local `AdventureWorks2022.bak` file is present, but restore/integrity verification remains outstanding. The claimed ZIP backup was not found in the checked project root.
+- The local `AdventureWorks2022.bak` file is present, but restore/integrity verification remains outstanding.
 - Rebuild cloud resources only after confirming the subscription, region, target resource groups, access permissions, and cost controls.
 - Review the prior ADLS network setting before recreation: public network access was enabled, while anonymous access was disabled. Apply the target organization's network policy rather than copying this setting by default.
 
