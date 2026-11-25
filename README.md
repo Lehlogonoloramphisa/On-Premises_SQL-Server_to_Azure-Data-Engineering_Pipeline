@@ -512,8 +512,7 @@ No credentials or secrets are stored in this repository.
 This tree reflects the files in this backup. Fabric services are described as a future target; there is no Fabric implementation folder in the repository.
 
 ```text
-Azure_Fabric_Migration_Project_Backup/
-├── .gitattributes
+Azure_Fabric_Migration_Project/
 ├── README.md
 ├── 01_Azure_Data_Factory/
 │   ├── ARM_Templates/
