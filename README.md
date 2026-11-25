@@ -27,6 +27,6 @@ The [step-by-step rebuild runbook](05_Documentation/Project_Progress/Rebuild_Run
 
 Before rebuilding Azure, confirm the subscription, region, resource-group contents, access, cost controls, and deployment settings. No credentials or secrets are stored in this repository.
 
-## Historical test evidence
+## Historical testing results
 
 The historical ADF, Silver, Gold, Spark, and troubleshooting results are in [Testing_Results](05_Documentation/Testing_Results/). The Customer Copy/audit mismatch, inclusive watermark behavior, and equal-timestamp merge limitation remain open.
