@@ -466,23 +466,6 @@ Aggregated results were reconciled against the source data.
 - Review identity, permissions and data access.
 - Explore data governance and lineage.
 
-## Additional Learning: Streaming Data Engineering
-
-Supplementary learning covered:
-
-- Apache Kafka architecture.
-- Producers, consumers, brokers and topics.
-- Partitions and consumer groups.
-- Offsets and delivery guarantees.
-- Kafka Connect and Debezium.
-- Schema Registry.
-- Avro and JSON Schema.
-- Spark Structured Streaming.
-- Azure Event Hubs.
-- Streaming data quality and event-time processing.
-
-This is supplementary learning and is not part of the completed batch-processing implementation.
-
 ## Backup and Azure Resource Cleanup
 
 The Azure environment was removed after the backup process to avoid ongoing cloud costs.
