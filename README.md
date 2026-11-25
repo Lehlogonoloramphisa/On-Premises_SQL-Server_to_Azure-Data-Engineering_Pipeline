@@ -4,7 +4,7 @@ Built a data engineering pipeline from a local SQL Server database through Azure
 
 The project demonstrates metadata-driven ingestion, full and incremental loading, data validation, dimensional modelling and Spark SQL investigation.
 
-The original Azure environment was deleted after the project backup to avoid ongoing cloud costs. This repository preserves the implementation files, exported data, configuration details and historical test results. Cloud tests have not been rerun during this local review.
+The original Azure environment was deleted after the project backup to avoid ongoing cloud costs. This repository preserves the implementation files, exported data, configuration details and historical test results. 
 
 ## Project Objectives
 
