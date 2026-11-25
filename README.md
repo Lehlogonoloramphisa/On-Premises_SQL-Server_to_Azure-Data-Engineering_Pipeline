@@ -509,63 +509,59 @@ No credentials or secrets are stored in this repository.
 
 ## Repository Structure
 
-The repository is organised by platform and project phase. The structure below describes the intended source-code organisation. The actual backup folders are listed in the Project Folder Overview above.
+This tree reflects the files in this backup. Fabric services are described as a future target; there is no Fabric implementation folder in the repository.
 
 ```text
-Azure-to-Fabric-Data-Engineering/
-│
-├── docs/
-│   ├── architecture/
-│   ├── testing/
-│   ├── project-overview.md
-│   ├── implementation-guide.md
-│   ├── migration-guide.md
-│   └── lessons-learned.md
-│
-├── azure/
-│   ├── data-factory/
-│   │   ├── pipelines/
-│   │   ├── datasets/
-│   │   ├── linked-services/
-│   │   └── arm-templates/
-│   │
-│   ├── adls/
-│   │   └── bronze/
-│   │
-│   └── databricks/
-│       ├── notebooks/
-│       │   ├── silver/
-│       │   ├── gold/
-│       │   └── optimisation/
-│       ├── sql/
-│       └── configuration/
-│
-├── database/
-│   ├── schema/
-│   ├── control-tables/
-│   ├── audit-tables/
-│   └── stored-procedures/
-│
-├── fabric/
-│   ├── data-factory/
-│   ├── lakehouse/
-│   ├── notebooks/
-│   ├── warehouse/
-│   └── power-bi/
-│
-├── data/
-│   ├── sample/
-│   └── schemas/
-│
-├── tests/
-│   ├── data-quality/
-│   ├── reconciliation/
-│   └── performance/
-│
-├── scripts/
-│   ├── python/
-│   ├── powershell/
-│   └── sql/
-│
-└── README.md
+Azure_Fabric_Migration_Project_Backup/
+├── .gitattributes
+├── README.md
+├── 01_Azure_Data_Factory/
+│   ├── ARM_Templates/
+│   │   ├── factory/
+│   │   └── linkedTemplates/
+│   ├── Datasets/
+│   ├── Integration_Runtime/
+│   ├── Linked_Services/
+│   ├── Pipelines/
+│   │   ├── PL_Copy_Customer_To_Bronze_support_live/
+│   │   └── PL_FullLoad_Product_To_Bronze_support_live/
+│   └── Triggers/
+├── 02_SQL_Server/
+│   ├── Audit_Tables/
+│   ├── Control_Tables/
+│   ├── Database_Backups/
+│   ├── Database_Scripts/
+│   └── Stored_Procedures/
+├── 03_Databricks/
+│   ├── Compute_Configuration/
+│   ├── Configuration/
+│   ├── Notebooks/
+│   ├── SQL/
+│   └── Unity_Catalog/
+├── 04_Data/
+│   ├── Bronze/
+│   │   ├── production/product/
+│   │   │   └── incremental/
+│   │   └── sales/
+│   │       ├── customer/incremental/
+│   │       ├── salesorderdetail/incremental/
+│   │       └── salesorderheader/incremental/
+│   ├── Silver/
+│   │   ├── customer/
+│   │   ├── product/
+│   │   ├── salesorderdetail/
+│   │   └── salesorderheader/
+│   └── Gold/
+│       ├── dim_customer/
+│       ├── dim_date/
+│       ├── dim_product/
+│       ├── fact_sales_line/
+│       └── fact_sales_order/
+├── 05_Documentation/
+│   ├── Architecture/
+│   ├── Lessons/
+│   ├── Project_Progress/
+│   ├── Testing_Results/
+│   └── Troubleshooting/
+└── 06_Resource_Inventory/
 ```
